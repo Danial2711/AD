@@ -114,6 +114,7 @@ class SetData(server.App):
         plt_obj.set_xlabel("Week")
         plt_obj.set_title(f"Plot for region {region_name} in {int(params['year'])}")
         plt_obj.xaxis.set_major_locator(MaxNLocator(integer=True))
+        plt_obj.grid(True)
         plot = plt_obj.get_figure()
         return plot
 
