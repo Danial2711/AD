@@ -3,11 +3,19 @@ from matplotlib.widgets import Slider, Button, CheckButtons
 import numpy as np
 from scipy import signal
 
+# Глобальна змінна для зберігання згенерованого шуму
+global_noise = None
+
 def harmonic_with_noise(t, amplitude, frequency, phase, noise_mean, noise_covariance, show_noise):
+    global global_noise
+    
     harmonic_signal = amplitude * np.sin(2 * np.pi * frequency * t + phase)
+    
     if show_noise:
-        noise = np.random.normal(noise_mean, noise_covariance, size=len(t))
-        return harmonic_signal + noise
+        if global_noise is None:
+            global_noise = np.random.normal(noise_mean, noise_covariance, size=len(t))
+        
+        return harmonic_signal + global_noise
     else:
         return harmonic_signal
 
@@ -58,6 +66,12 @@ def update(val):
     noise_mean = s_noise_mean.val
     noise_covariance = s_noise_covariance.val
     cutoff_freq = s_cutoff_freq.val
+    
+    if show_initial_noise:
+        global global_noise
+        
+        if global_noise is None or noise_mean != initial_noise_mean or noise_covariance != initial_noise_covariance:
+            global_noise = np.random.normal(noise_mean, noise_covariance, size=len(t))
     
     noisy_signal = harmonic_with_noise(t, amplitude, frequency, phase, noise_mean, noise_covariance, show_initial_noise)
     
