@@ -1,19 +1,6 @@
-import numpy as np
-import plotly.graph_objs as go
-from plotly.subplots import make_subplots
 import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output
-
-def harmonic_with_noise(amplitude, frequency, phase, noise_mean, noise_covariance, show_noise):
-    t = np.linspace(0, 1, 500)
-    harmonic = amplitude * np.sin(2 * np.pi * frequency * t + phase)
-    noise = np.random.normal(noise_mean, noise_covariance, size=len(t))
-    if show_noise:
-        signal_with_noise = harmonic + noise
-    else:
-        signal_with_noise = None
-    return t, harmonic, signal_with_noise
+from dash import dcc, html, Input, Output
+import numpy as np
 
 app = dash.Dash(__name__)
 
@@ -22,24 +9,21 @@ initial_frequency = 1.0
 initial_phase = 0.0
 initial_noise_mean = 0.0
 initial_noise_covariance = 0.1
+initial_window_size = 5
 
-app.layout = html.Div([
-    html.H1("Harmonic with Noise"),
-    dcc.Graph(id='graph'),
-    html.Label('Amplitude'),
-    dcc.Slider(id='amplitude-slider', min=0, max=2, step=0.1, value=initial_amplitude),
-    html.Label('Frequency'),
-    dcc.Slider(id='frequency-slider', min=0, max=10, step=0.1, value=initial_frequency),
-    html.Label('Phase'),
-    dcc.Slider(id='phase-slider', min=0, max=2*np.pi, step=0.1, value=initial_phase),
-    html.Label('Noise Mean'),
-    dcc.Slider(id='noise-mean-slider', min=-1, max=1, step=0.1, value=initial_noise_mean),
-    html.Label('Noise Covariance'),
-    dcc.Slider(id='noise-covariance-slider', min=0, max=1, step=0.01, value=initial_noise_covariance),
-    html.Label('Show Noise'),
-    dcc.Checklist(id='show-noise-checkbox', options=[{'label': 'Show Noise', 'value': True}], value=[True]),
-    html.Button('Reset', id='reset-button', n_clicks=0)
-])
+previous_noise = None
+previous_noise_mean = None
+previous_noise_covariance = None
+
+t = np.arange(0.0, 10.0, 0.01)
+
+def harmonic_with_noise(t, amplitude, frequency, phase, noise_mean, noise_covariance, show_noise):
+    signal = amplitude * np.sin(2 * np.pi * frequency * t + phase)
+    if show_noise:
+        noise = np.random.normal(noise_mean, np.sqrt(noise_covariance), len(t))
+        return signal + noise, signal
+    else:
+        return signal, signal
 
 def custom_filter(signal, window_size):
     filtered_signal = []
@@ -49,28 +33,137 @@ def custom_filter(signal, window_size):
         window_sum = sum(signal[start:end])
         window_average = window_sum / (end - start)
         filtered_signal.append(window_average)
-    return np.array(filtered_signal)
+    return filtered_signal
+
+y_noise, y_harmonic = harmonic_with_noise(t, initial_amplitude, initial_frequency, initial_phase, initial_noise_mean, initial_noise_covariance, True)
+filtered_signal = custom_filter(y_noise, initial_window_size)
+
+app.layout = html.Div([
+    html.H1("Harmonic Signal with Noise", style={'text-align': 'center'}),
+    html.Div([
+        dcc.Graph(id='secondary-graph'),
+        html.Label("Select Graph to Display"),
+        dcc.Dropdown(
+            id='graph-selector',
+            options=[
+                {'label': 'Signal with Noise', 'value': 'signal_noise'},
+                {'label': 'Pure Harmonic', 'value': 'pure_harmonic'},
+                {'label': 'Filtered Signal', 'value': 'filtered_signal'}
+            ],
+            value='signal_noise'
+        ),
+    ]),
+    dcc.Graph(id='main-graph', figure={
+        'data': [
+            {'x': t, 'y': y_noise, 'type': 'scatter', 'name': 'Signal with Noise', 'line': {'color': 'gray'}},
+            {'x': t, 'y': y_harmonic, 'type': 'scatter', 'name': 'Pure Harmonic', 'line': {'color': 'blue'}},
+            {'x': t, 'y': filtered_signal, 'type': 'scatter', 'name': 'Filtered Signal', 'line': {'color': 'red'}}
+        ],
+        'layout': {
+            'title': 'Harmonic Signal with Noise',
+            'xaxis': {'title': 'Time'},
+            'yaxis': {'title': 'Amplitude'}
+        }
+    }),
+    html.Div([
+        html.Label("Amplitude"),
+        dcc.Slider(id='amplitude-slider', min=0.1, max=2.0, step=0.1, value=initial_amplitude),
+        html.Label("Frequency"),
+        dcc.Slider(id='frequency-slider', min=0.1, max=2.0, step=0.1, value=initial_frequency),
+        html.Label("Phase"),
+        dcc.Slider(id='phase-slider', min=0, max=2*np.pi, step=0.1, value=initial_phase),
+        html.Label("Noise Mean"),
+        dcc.Slider(id='noise-mean-slider', min=-1.0, max=1.0, step=0.1, value=initial_noise_mean),
+        html.Label("Noise Covariance"),
+        dcc.Slider(id='noise-covariance-slider', min=0.0, max=1.0, step=0.1, value=initial_noise_covariance),
+        html.Label("Cutoff Frequency"),
+        dcc.Slider(id='cutoff-frequency', min=3, max=21, step=2, value=initial_window_size),
+        html.Button('Reset', id='reset-button', n_clicks=0, style={'margin-top': '10px', 'font-size': '16px', 'background-color': 'lightgray'}),
+        html.Button('Show Noise', id='show-noise-button', n_clicks=0, style={'margin-top': '10px', 'font-size': '16px', 'background-color': 'lightblue'}),
+    ]),
+])
 
 @app.callback(
-    Output('graph', 'figure'),
-    [Input('amplitude-slider', 'value'),
-     Input('frequency-slider', 'value'),
-     Input('phase-slider', 'value'),
-     Input('noise-mean-slider', 'value'),
-     Input('noise-covariance-slider', 'value'),
-     Input('show-noise-checkbox', 'value'),
-     Input('reset-button', 'n_clicks')]
+    [
+        Output('amplitude-slider', 'value'),
+        Output('frequency-slider', 'value'),
+        Output('phase-slider', 'value'),
+        Output('noise-mean-slider', 'value'),
+        Output('noise-covariance-slider', 'value'),
+        Output('cutoff-frequency', 'value')
+    ],
+    [Input('reset-button', 'n_clicks')]
 )
-def update_graph(amplitude, frequency, phase, noise_mean, noise_covariance, show_noise, n_clicks):
-    t, harmonic, signal_with_noise = harmonic_with_noise(amplitude, frequency, phase, noise_mean, noise_covariance, show_noise)
-    fig = make_subplots(rows=1, cols=1)
+def reset_sliders(reset_clicks):
+    if reset_clicks:
+        return initial_amplitude, initial_frequency, initial_phase, initial_noise_mean, initial_noise_covariance, initial_window_size
+    else:
+        raise dash.exceptions.PreventUpdate
+
+@app.callback(
+    Output('main-graph', 'figure'),
+    [
+        Input('amplitude-slider', 'value'),
+        Input('frequency-slider', 'value'),
+        Input('phase-slider', 'value'),
+        Input('noise-mean-slider', 'value'),
+        Input('noise-covariance-slider', 'value'),
+        Input('cutoff-frequency', 'value'),
+        Input('show-noise-button', 'n_clicks')
+    ],
+    prevent_initial_call=True
+)
+def update_graph(amplitude, frequency, phase, noise_mean, noise_covariance, window_size, noise_clicks):
+    global previous_noise, previous_noise_mean, previous_noise_covariance
+
+    if (noise_mean != previous_noise_mean or noise_covariance != previous_noise_covariance):
+        previous_noise_mean = noise_mean
+        previous_noise_covariance = noise_covariance
+        previous_noise = np.random.normal(noise_mean, np.sqrt(noise_covariance), len(t))
+
+    y_noise, y_harmonic = amplitude * np.sin(2 * np.pi * frequency * t + phase), amplitude * np.sin(2 * np.pi * frequency * t + phase)
+    
+    show_noise = noise_clicks % 2 == 1
+
     if show_noise:
-        fig.add_trace(go.Scatter(x=t, y=signal_with_noise, mode='lines', name='Harmonic with Noise'), row=1, col=1)
-    fig.add_trace(go.Scatter(x=t, y=harmonic, mode='lines', name='Pure Harmonic'), row=1, col=1)
-    filtered_signal = custom_filter(signal_with_noise, 15)
-    fig.add_trace(go.Scatter(x=t, y=filtered_signal, mode='lines', name='Filtered Signal', line=dict(color='yellow')), row=1, col=1)
-    fig.update_layout(title="Harmonic with Noise and Pure Harmonic", xaxis_title="Time", yaxis_title="Amplitude")
+        y_noise += previous_noise
+        filtered_signal = custom_filter(y_noise, window_size)
+    else:
+        filtered_signal = None
+
+    fig = {
+        'data': [
+            {'x': t, 'y': y_noise, 'type': 'scatter', 'name': 'Signal with Noise', 'line': {'color': 'gray'}},
+            {'x': t, 'y': y_harmonic, 'type': 'scatter', 'name': 'Pure Harmonic', 'line': {'color': 'blue'}}
+        ],
+        'layout': {
+            'title': 'Harmonic Signal with Noise',
+            'xaxis': {'title': 'Time'},
+            'yaxis': {'title': 'Amplitude'}
+        }
+    }
+
+    if filtered_signal is not None:
+        fig['data'].append({'x': t, 'y': filtered_signal, 'type': 'scatter', 'name': 'Filtered Signal', 'line': {'color': 'red'}})
+
     return fig
+
+@app.callback(
+    Output('secondary-graph', 'figure'),
+    [
+        Input('graph-selector', 'value'),
+        Input('main-graph', 'figure')
+    ],
+    prevent_initial_call=True
+)
+def update_secondary_graph(selected_graph, main_graph_figure):
+    main_data = main_graph_figure['data']
+    if selected_graph == 'signal_noise':
+        return {'data': [trace for trace in main_data if trace['name'] == 'Signal with Noise']}
+    elif selected_graph == 'pure_harmonic':
+        return {'data': [trace for trace in main_data if trace['name'] == 'Pure Harmonic']}
+    elif selected_graph == 'filtered_signal':
+        return {'data': [trace for trace in main_data if trace['name'] == 'Filtered Signal']}
 
 if __name__ == '__main__':
     app.run_server(debug=True)
