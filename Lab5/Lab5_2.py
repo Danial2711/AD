@@ -76,8 +76,8 @@ app.layout = html.Div([
         dcc.Slider(id='noise-mean-slider', min=-1.0, max=1.0, step=0.1, value=initial_noise_mean),
         html.Label("Noise Covariance"),
         dcc.Slider(id='noise-covariance-slider', min=0.0, max=1.0, step=0.1, value=initial_noise_covariance),
-        html.Label("Cutoff Frequency"),
-        dcc.Slider(id='cutoff-frequency', min=3, max=21, step=2, value=initial_window_size),
+        html.Label("Window size"),
+        dcc.Slider(id='window-size', min=3, max=21, step=2, value=initial_window_size),
         html.Button('Reset', id='reset-button', n_clicks=0, style={'margin-top': '10px', 'font-size': '16px', 'background-color': 'lightgray'}),
         html.Button('Show Noise', id='show-noise-button', n_clicks=0, style={'margin-top': '10px', 'font-size': '16px', 'background-color': 'lightblue'}),
     ]),
@@ -90,7 +90,7 @@ app.layout = html.Div([
         Output('phase-slider', 'value'),
         Output('noise-mean-slider', 'value'),
         Output('noise-covariance-slider', 'value'),
-        Output('cutoff-frequency', 'value')
+        Output('window-size', 'value')
     ],
     [Input('reset-button', 'n_clicks')]
 )
@@ -108,7 +108,7 @@ def reset_sliders(reset_clicks):
         Input('phase-slider', 'value'),
         Input('noise-mean-slider', 'value'),
         Input('noise-covariance-slider', 'value'),
-        Input('cutoff-frequency', 'value'),
+        Input('window-size', 'value'),
         Input('show-noise-button', 'n_clicks')
     ],
     prevent_initial_call=True
