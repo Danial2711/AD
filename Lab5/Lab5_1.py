@@ -38,6 +38,7 @@ initial_cutoff_frequency = 5.0
 t = np.linspace(0, 10, 1000)
 
 fig, ax = plt.subplots()
+ax.grid(True)
 plt.subplots_adjust(left=0.1, bottom=0.5)
 
 noisy_signal = harmonic_with_noise(t, initial_amplitude, initial_frequency, initial_phase, initial_noise_mean, initial_noise_covariance, show_initial_noise)
