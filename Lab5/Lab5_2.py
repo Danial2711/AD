@@ -77,7 +77,7 @@ app.layout = html.Div([
         html.Label("Noise Covariance"),
         dcc.Slider(id='noise-covariance-slider', min=0.0, max=1.0, step=0.1, value=initial_noise_covariance),
         html.Label("Window size"),
-        dcc.Slider(id='window-size', min=3, max=21, step=2, value=initial_window_size),
+        dcc.Slider(id='window-size', min=3, max=100, step=5, value=initial_window_size),
         html.Button('Reset', id='reset-button', n_clicks=0, style={'margin-top': '10px', 'font-size': '16px', 'background-color': 'lightgray'}),
         html.Button('Show Noise', id='show-noise-button', n_clicks=0, style={'margin-top': '10px', 'font-size': '16px', 'background-color': 'lightblue'}),
     ]),
